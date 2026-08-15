@@ -791,7 +791,17 @@ const AdminHub = () => {
                       {faculty.length === 0 ? (
                         <p className="text-slate-400 text-sm text-center py-6">No educators registered yet.</p>
                       ) : (
-                        faculty.map((member) => (
+                        [...faculty].sort((a, b) => {
+                          const getRank = (d = '') => {
+                            const low = d.toLowerCase();
+                            if (low.includes('head') || low.includes('hod')) return 1;
+                            if (low.includes('associate')) return 3;
+                            if (low.includes('assistant')) return 4;
+                            if (low.includes('professor')) return 2;
+                            return 5;
+                          };
+                          return getRank(a.designation) - getRank(b.designation);
+                        }).map((member) => (
                           <div 
                             key={member.id} 
                             className={`flex justify-between items-center p-4 border rounded-2xl transition-all ${
