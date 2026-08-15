@@ -677,7 +677,7 @@ const AdminHub = () => {
                             onChange={(e) => setNewFacultyData({ ...newFacultyData, designation: e.target.value })}
                             className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary-light transition-colors text-slate-800 font-semibold"
                           >
-                            <option value="Professor & Head">Professor & Head</option>
+                            <option value="Head of the Department">Head of the Department</option>
                             <option value="Professor">Professor</option>
                             <option value="Associate Professor">Associate Professor</option>
                             <option value="Assistant Professor">Assistant Professor</option>
