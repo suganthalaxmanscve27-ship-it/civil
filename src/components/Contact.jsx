@@ -1,4 +1,4 @@
-import { MapPin, Phone, Mail, Landmark } from 'lucide-react';
+import { MapPin, Mail, Landmark } from 'lucide-react';
 
 const InstagramIcon = ({ className = "w-6 h-6" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -25,11 +25,11 @@ const Contact = () => {
         </div>
 
         {/* Contact Info Cards Grid — Fully Clickable Cards */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-8 sm:mb-12">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-8 sm:mb-12">
           
           {/* Visit Us Card */}
           <a
-            href="https://maps.google.com/?q=Government+College+of+Engineering+Erode+Tamil+Nadu"
+            href="https://maps.google.com/?q=Government+College+of+Engineering+Erode"
             target="_blank"
             rel="noopener noreferrer"
             className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-light/40 hover:-translate-y-1 transition-all duration-300 text-left flex items-start space-x-4 group no-underline cursor-pointer block"
@@ -48,28 +48,9 @@ const Contact = () => {
             </div>
           </a>
 
-          {/* Call Us Card */}
-          <a
-            href="tel:+914242530085"
-            className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-light/40 hover:-translate-y-1 transition-all duration-300 text-left flex items-start space-x-4 group no-underline cursor-pointer block"
-          >
-            <div className="w-12 h-12 bg-accent/15 text-primary-dark group-hover:bg-accent group-hover:text-primary-dark rounded-2xl flex items-center justify-center flex-shrink-0 transition-colors duration-300">
-              <Phone className="w-6 h-6 stroke-[1.5]" />
-            </div>
-            <div>
-              <h4 className="font-extrabold text-primary-dark group-hover:text-primary-light transition-colors text-base mb-1">
-                Call Us 📞
-              </h4>
-              <p className="text-slate-500 text-[10px] mb-1 font-bold uppercase tracking-wider">Department Office</p>
-              <span className="text-slate-800 group-hover:text-primary-light text-sm font-extrabold transition-colors m-0 block">
-                +91 424 2530085
-              </span>
-            </div>
-          </a>
-
           {/* Email Us Card */}
           <a
-            href="mailto:civil@gcee.ac.in"
+            href="mailto:civitasgcee.ac.in@gmail.com"
             className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-light/40 hover:-translate-y-1 transition-all duration-300 text-left flex items-start space-x-4 group no-underline cursor-pointer block"
           >
             <div className="w-12 h-12 bg-primary-light/10 text-primary-light group-hover:bg-primary-light group-hover:text-white rounded-2xl flex items-center justify-center flex-shrink-0 transition-colors duration-300">
@@ -81,7 +62,7 @@ const Contact = () => {
               </h4>
               <p className="text-slate-500 text-[10px] mb-1 font-bold uppercase tracking-wider">Official Inquiries</p>
               <span className="text-slate-800 group-hover:text-primary-light text-xs sm:text-sm font-extrabold transition-colors m-0 block truncate max-w-[170px]">
-                civil@gcee.ac.in
+                civitasgcee.ac.in@gmail.com
               </span>
             </div>
           </a>
