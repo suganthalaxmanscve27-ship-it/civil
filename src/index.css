@@ -13,6 +13,171 @@
   }
 }
 
+/* Global Width & Reset to Prevent Horizontal Overflow */
+html,
+body,
+#root {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+.college-header,
+.main-navbar {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 1. Desktop Top College Header Layout */
+.college-header {
+  background: #ffffff;
+  min-height: 135px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 5%;
+  box-sizing: border-box;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.college-logo {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.college-info {
+  text-align: center;
+  flex: 1;
+  padding: 0 25px;
+}
+
+.college-info h1 {
+  margin: 0;
+  font-size: clamp(26px, 3vw, 42px);
+  line-height: 1.15;
+  color: #003b70;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 800;
+}
+
+.college-info h2 {
+  margin: 8px 0 4px;
+  font-size: 18px;
+  color: #334155;
+  font-weight: 600;
+}
+
+.college-info p {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* 2. Mobile Responsive Header (max-width: 768px) */
+@media (max-width: 768px) {
+  .college-header {
+    min-height: 145px;
+    padding: 12px 14px;
+    align-items: center;
+  }
+
+  .college-logo {
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+  }
+
+  .college-info {
+    padding: 0 8px;
+  }
+
+  .college-info h1 {
+    font-size: 19px;
+    line-height: 0.98;
+  }
+
+  .college-info h2 {
+    font-size: 14px;
+    margin: 4px 0 2px;
+  }
+
+  .college-info p {
+    font-size: 10px;
+    line-height: 1.35;
+  }
+}
+
+/* 3. Main Navbar Layout */
+.main-navbar {
+  height: 64px;
+  background: #082b50;
+  display: flex;
+  align-items: center;
+  padding: 0 4%;
+  box-sizing: border-box;
+}
+
+.nav-brand {
+  color: white;
+  font-weight: 700;
+  font-size: 17px;
+  white-space: nowrap;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent;
+}
+
+.nav-brand:focus,
+.nav-brand:focus-visible {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  margin-left: auto;
+}
+
+.menu-toggle {
+  display: none;
+  border: none;
+  background: transparent;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .main-navbar {
+    height: 64px;
+    padding: 0 18px;
+  }
+
+  .nav-brand {
+    font-size: 14px;
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  .menu-toggle {
+    display: flex;
+    margin-left: 18px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
 /* Custom Scrollbar */
 .overflow-custom::-webkit-scrollbar {
   width: 6px;
@@ -121,13 +286,6 @@
   scrollbar-width: none;
 }
 
-/* Prevent horizontal overflow on mobile */
-@media (max-width: 640px) {
-  html, body {
-    overflow-x: hidden;
-  }
-}
-
 /* Touch-friendly scroll for horizontal tab bars */
 .overflow-x-auto {
   -webkit-overflow-scrolling: touch;
@@ -144,4 +302,14 @@ img {
   .fixed.bottom-4, .fixed.bottom-6 {
     padding-bottom: env(safe-area-inset-bottom);
   }
+}
+
+/* Notice image preview styles */
+.notice-image {
+  width: 100%;
+  height: 180px;
+  object-fit: contain;
+  object-position: center;
+  background: #f1f5f9;
+  border-radius: 12px;
 }

@@ -2,22 +2,62 @@ import React, { useState } from 'react';
 import { Bell, Calendar, MapPin, Clock, ExternalLink, Globe, X } from 'lucide-react';
 import { useData } from '../context/DataContext';
 
-const isValidImageUrl = (url) => {
-  if (!url || typeof url !== 'string') return false;
-  const trimmed = url.trim();
-  if (trimmed.length < 5) return false;
-  // Must start with http://, https://, data:image/, blob:, or leading /
-  return /^(https?:\/\/|data:image\/|blob:|\/|\.\/)/i.test(trimmed);
+const sanitizeImageUrl = (url) => {
+  if (!url || typeof url !== 'string') return '';
+  let trimmed = url.trim();
+  if (!trimmed) return '';
+
+  try {
+    // 1. Bing Image Search URLs (extract mediaurl query parameter)
+    if (trimmed.includes('bing.com/images/search')) {
+      const parsedUrl = new URL(trimmed);
+      const mediaUrl = parsedUrl.searchParams.get('mediaurl');
+      if (mediaUrl) return decodeURIComponent(mediaUrl);
+    }
+
+    // 2. Google Image Search URLs (extract imgurl query parameter)
+    if (trimmed.includes('google.com/imgres') || trimmed.includes('google.com/search')) {
+      const parsedUrl = new URL(trimmed);
+      const imgUrl = parsedUrl.searchParams.get('imgurl');
+      if (imgUrl) return decodeURIComponent(imgUrl);
+    }
+
+    // 3. Google Drive file links (convert sharing link to direct embeddable image URL)
+    if (trimmed.includes('drive.google.com') || trimmed.includes('docs.google.com')) {
+      // Format A: /file/d/FILE_ID/view?usp=sharing
+      const fileIdMatch = trimmed.match(/\/file\/d\/([^/]+)/);
+      if (fileIdMatch && fileIdMatch[1]) {
+        return `https://lh3.googleusercontent.com/d/${fileIdMatch[1]}`;
+      }
+      // Format B: uc?export=view&id=FILE_ID or open?id=FILE_ID
+      const idParamMatch = trimmed.match(/[?&]id=([^&]+)/);
+      if (idParamMatch && idParamMatch[1]) {
+        return `https://lh3.googleusercontent.com/d/${idParamMatch[1]}`;
+      }
+    }
+  } catch (e) {
+    // Fallback if URL parsing fails
+  }
+
+  return trimmed;
 };
 
-const ImageWithFallback = ({ src, alt, className, icon: Icon = Bell }) => {
+const isValidImageUrl = (rawUrl) => {
+  const url = sanitizeImageUrl(rawUrl);
+  if (!url || typeof url !== 'string') return false;
+  if (url.length < 5) return false;
+  return /^(https?:\/\/|data:image\/|blob:|\/|\.\/)/i.test(url);
+};
+
+const ImageWithFallback = ({ src, alt = '', className, icon: Icon = Bell }) => {
   const [hasError, setHasError] = useState(false);
+  const cleanSrc = sanitizeImageUrl(src);
 
   React.useEffect(() => {
     setHasError(false);
   }, [src]);
 
-  if (!isValidImageUrl(src) || hasError) {
+  if (!isValidImageUrl(cleanSrc) || hasError) {
     return (
       <div className={`bg-primary-light/10 text-primary-light rounded-xl flex items-center justify-center font-bold text-xs ${className}`}>
         <Icon className="w-5 h-5 text-primary-light" />
@@ -27,8 +67,8 @@ const ImageWithFallback = ({ src, alt, className, icon: Icon = Bell }) => {
 
   return (
     <img 
-      src={src} 
-      alt="" 
+      src={cleanSrc} 
+      alt={alt} 
       className={className}
       onError={() => setHasError(true)}
     />
@@ -42,10 +82,12 @@ const NoticesEvents = () => {
   // Event Popup state
   const [eventModalData, setEventModalData] = useState(null);
   const [isClosingEventModal, setIsClosingEventModal] = useState(false);
+  const [eventImageType, setEventImageType] = useState('none'); // 'portrait' | 'landscape' | 'square' | 'extreme-tall' | 'none'
 
   // Notice Popup state
   const [noticeModalData, setNoticeModalData] = useState(null);
   const [isClosingNoticeModal, setIsClosingNoticeModal] = useState(false);
+  const [noticeImageType, setNoticeImageType] = useState('none'); // 'portrait' | 'landscape' | 'square' | 'extreme-tall' | 'none'
 
   // Format date helper (e.g. "2026-08-05" -> "Aug 05, 2026")
   const formatDate = (dateStr) => {
@@ -83,6 +125,7 @@ const NoticesEvents = () => {
   // Event modal handlers
   const openEventPopup = (event) => {
     setIsClosingEventModal(false);
+    setEventImageType(isValidImageUrl(event.picture_link) ? 'loading' : 'none');
     setEventModalData(event);
   };
 
@@ -91,12 +134,51 @@ const NoticesEvents = () => {
     setTimeout(() => {
       setEventModalData(null);
       setIsClosingEventModal(false);
+      setEventImageType('none');
     }, 200);
+  };
+
+  // Detect image aspect ratio on load
+  const handleEventImageLoad = (e) => {
+    const { naturalWidth, naturalHeight } = e.target;
+    const ratio = naturalWidth / naturalHeight;
+
+    if (ratio < 0.55) {
+      setEventImageType('extreme-tall');
+    } else if (ratio < 0.75) {
+      setEventImageType('portrait');
+    } else if (ratio > 1.4) {
+      setEventImageType('landscape');
+    } else {
+      setEventImageType('square');
+    }
+  };
+
+  // Compute adaptive modal classes
+  const getEventModalWidthClass = () => {
+    switch (eventImageType) {
+      case 'landscape': return 'max-w-2xl';
+      case 'portrait': return 'max-w-md sm:max-w-lg';
+      case 'extreme-tall': return 'max-w-md sm:max-w-lg';
+      case 'square': return 'max-w-lg sm:max-w-xl';
+      default: return 'max-w-lg';
+    }
+  };
+
+  const getEventImageMaxHeight = () => {
+    switch (eventImageType) {
+      case 'portrait': return 'max-h-[420px]';
+      case 'square': return 'max-h-[350px]';
+      case 'landscape': return 'max-h-[280px]';
+      case 'extreme-tall': return 'max-h-[400px]';
+      default: return 'max-h-[350px]';
+    }
   };
 
   // Notice modal handlers
   const openNoticePopup = (notice) => {
     setIsClosingNoticeModal(false);
+    setNoticeImageType(isValidImageUrl(notice.picture_link) ? 'loading' : 'none');
     setNoticeModalData(notice);
   };
 
@@ -105,7 +187,45 @@ const NoticesEvents = () => {
     setTimeout(() => {
       setNoticeModalData(null);
       setIsClosingNoticeModal(false);
+      setNoticeImageType('none');
     }, 200);
+  };
+
+  // Detect notice image aspect ratio on load
+  const handleNoticeImageLoad = (e) => {
+    const { naturalWidth, naturalHeight } = e.target;
+    const ratio = naturalWidth / naturalHeight;
+
+    if (ratio < 0.55) {
+      setNoticeImageType('extreme-tall');
+    } else if (ratio < 0.75) {
+      setNoticeImageType('portrait');
+    } else if (ratio > 1.4) {
+      setNoticeImageType('landscape');
+    } else {
+      setNoticeImageType('square');
+    }
+  };
+
+  // Compute adaptive notice modal classes
+  const getNoticeModalWidthClass = () => {
+    switch (noticeImageType) {
+      case 'landscape': return 'max-w-2xl';
+      case 'portrait': return 'max-w-md sm:max-w-lg';
+      case 'extreme-tall': return 'max-w-md sm:max-w-lg';
+      case 'square': return 'max-w-lg sm:max-w-xl';
+      default: return 'max-w-lg';
+    }
+  };
+
+  const getNoticeImageMaxHeight = () => {
+    switch (noticeImageType) {
+      case 'portrait': return 'max-h-[420px]';
+      case 'square': return 'max-h-[350px]';
+      case 'landscape': return 'max-h-[280px]';
+      case 'extreme-tall': return 'max-h-[400px]';
+      default: return 'max-h-[350px]';
+    }
   };
 
   return (
@@ -117,18 +237,21 @@ const NoticesEvents = () => {
           <div className="flex flex-col h-full">
             <div className="flex items-center mb-8">
               <div className="w-12 h-12 bg-primary-dark text-white rounded-2xl flex items-center justify-center mr-4 shadow-lg">
-                <Bell className="w-6 h-6 animate-swing" />
+                <Bell className="w-6 h-6 animate-swing text-accent" />
               </div>
               <div>
                 <h2 className="text-xl sm:text-2xl font-extrabold text-primary-dark tracking-tight">Recent Notices</h2>
-                <p className="text-xs text-slate-500 uppercase tracking-widest font-bold mt-0.5">Click notice card to pop up details</p>
+                <p className="text-xs text-slate-500 uppercase tracking-widest font-bold mt-0.5">Click notice card to view details</p>
               </div>
             </div>
 
             <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden border border-slate-100 flex-grow flex flex-col min-h-[300px] sm:min-h-[400px]">
               {/* Notice Header Banner */}
               <div className="bg-primary-dark px-6 py-4 flex justify-between items-center">
-                <span className="text-white/80 text-xs font-bold uppercase tracking-widest">Notice Board</span>
+                <span className="text-white/80 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-accent" />
+                  NOTICE BOARD
+                </span>
                 <span className="flex space-x-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
                   <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
@@ -137,7 +260,7 @@ const NoticesEvents = () => {
               </div>
 
               {/* Notice List */}
-              <div className="flex-grow p-4 sm:p-6 overflow-y-auto max-h-[400px] sm:max-h-[520px] overflow-custom">
+              <div className="flex-grow p-4 sm:p-6 overflow-y-auto max-h-[500px] sm:max-h-[600px] overflow-custom">
                 {loading ? (
                   <div className="py-12 text-center">
                     <div className="inline-block w-8 h-8 border-4 border-slate-200 border-t-primary-light rounded-full animate-spin"></div>
@@ -149,7 +272,7 @@ const NoticesEvents = () => {
                     <p className="font-medium">No recent notices available.</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     {notices.map((notice) => {
                       const hasValidImage = isValidImageUrl(notice.picture_link);
                       
@@ -157,50 +280,50 @@ const NoticesEvents = () => {
                         <div 
                           key={notice.id} 
                           onClick={() => openNoticePopup(notice)}
-                          className="p-5 bg-slate-50 hover:bg-slate-100/90 border-l-4 border-accent rounded-r-2xl transition-all duration-300 shadow-sm hover:shadow-lg flex flex-col sm:flex-row sm:items-start justify-between gap-4 group cursor-pointer relative overflow-hidden text-left"
+                          className="p-5 bg-slate-50 hover:bg-slate-100/90 border-l-4 border-accent rounded-2xl transition-all duration-300 shadow-sm hover:shadow-lg flex flex-col gap-3 group cursor-pointer relative overflow-hidden text-left"
                         >
                           <div className="absolute top-0 right-0 bg-primary-light/10 text-primary-dark font-extrabold text-[10px] uppercase px-3 py-1 rounded-bl-xl opacity-0 group-hover:opacity-100 transition-opacity">
                             Click for details ↗
                           </div>
 
-                          {hasValidImage ? (
-                            <div className="w-16 h-16 rounded-xl border border-slate-200 overflow-hidden flex-shrink-0 bg-slate-100">
-                              <ImageWithFallback 
-                                src={notice.picture_link} 
-                                alt="" 
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                                icon={Bell}
-                              />
-                            </div>
-                          ) : (
-                            <div className="w-12 h-12 bg-primary-light/10 text-primary-light rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-xs">
-                              <Bell className="w-5 h-5 text-primary-light" />
-                            </div>
-                          )}
-                          <div className="flex-grow pr-2 text-left">
-                            <h4 className="font-bold text-slate-800 text-base leading-snug group-hover:text-primary-light transition-colors">
-                              {notice.title}
-                            </h4>
-                            <div className="flex flex-wrap items-center gap-2.5 mt-2">
-                              <span className="inline-block text-[11px] text-slate-500 font-bold bg-slate-200/60 px-2.5 py-0.5 rounded-md">
-                                Posted: {formatDate(notice.date)}
-                              </span>
-                              {hasValidImage && (
-                                <span className="inline-flex items-center text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200">
-                                  🖼 Attached Image
-                                </span>
-                              )}
-                              {notice.website_link && (
-                                <button 
-                                  onClick={(e) => handleWebsiteClick(e, notice.website_link, notice.title)}
-                                  className="inline-flex items-center text-[11px] font-extrabold text-white bg-primary-light hover:bg-primary-dark px-2.5 py-0.5 rounded-md transition-all border-0 cursor-pointer shadow-sm"
-                                >
-                                  <Globe className="w-3.5 h-3.5 mr-1 text-accent" />
-                                  Visit Website ↗
-                                </button>
-                              )}
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-lg">📝</span>
+                            <div className="flex-grow">
+                              <h4 className="font-bold text-slate-800 text-base leading-snug group-hover:text-primary-light transition-colors">
+                                {notice.title}
+                              </h4>
+                              <p className="text-xs text-slate-500 font-semibold mt-1">
+                                Posted {formatDate(notice.date)}
+                              </p>
                             </div>
                           </div>
+
+                          {/* NOTICE IMAGE Container */}
+                          {hasValidImage && (
+                            <div className="w-full h-[180px] bg-[#f1f5f9] rounded-[12px] overflow-hidden border border-slate-200/80 shadow-sm flex items-center justify-center relative group-hover:border-primary-light/40 transition-colors">
+                              <ImageWithFallback 
+                                src={notice.picture_link} 
+                                alt={notice.title} 
+                                className="notice-image w-full h-[180px] object-contain object-center transition-transform duration-300 group-hover:scale-[1.02]"
+                                icon={Bell}
+                              />
+                              <div className="absolute bottom-2 right-2 bg-slate-900/75 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-md border border-white/10">
+                                🖼 NOTICE IMAGE
+                              </div>
+                            </div>
+                          )}
+
+                          {notice.website_link && (
+                            <div className="flex items-center justify-end pt-1">
+                              <button 
+                                onClick={(e) => handleWebsiteClick(e, notice.website_link, notice.title)}
+                                className="inline-flex items-center text-xs font-extrabold text-white bg-primary-light hover:bg-primary-dark px-3 py-1.5 rounded-lg transition-all border-0 cursor-pointer shadow-sm"
+                              >
+                                <Globe className="w-3.5 h-3.5 mr-1.5 text-accent" />
+                                Visit Link ↗
+                              </button>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -218,16 +341,16 @@ const NoticesEvents = () => {
               </div>
               <div>
                 <h2 className="text-xl sm:text-2xl font-extrabold text-primary-dark tracking-tight">Upcoming Events</h2>
-                <p className="text-xs text-slate-500 uppercase tracking-widest font-bold mt-0.5">Click event to open pop up</p>
+                <p className="text-xs text-slate-500 uppercase tracking-widest font-bold mt-0.5">Click event for details</p>
               </div>
             </div>
 
-            <div className="space-y-4 flex-grow overflow-y-auto max-h-[480px] sm:max-h-[580px] pr-1 sm:pr-2 overflow-custom">
+            <div className="space-y-5 flex-grow overflow-y-auto max-h-[520px] sm:max-h-[620px] pr-1 sm:pr-2 overflow-custom">
               {loading ? (
                 // Skeletons
                 [1, 2, 3].map((n) => (
-                  <div key={n} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm animate-pulse-custom flex">
-                    <div className="w-16 h-16 bg-slate-100 rounded-2xl mr-4 flex-shrink-0"></div>
+                  <div key={n} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm animate-pulse-custom flex gap-4">
+                    <div className="w-20 h-20 bg-slate-100 rounded-2xl flex-shrink-0"></div>
                     <div className="flex-grow space-y-3 pt-1">
                       <div className="h-4 bg-slate-100 rounded w-3/4"></div>
                       <div className="h-3 bg-slate-100 rounded w-1/2"></div>
@@ -250,57 +373,77 @@ const NoticesEvents = () => {
                     <div 
                       key={event.id}
                       onClick={() => openEventPopup(event)}
-                      className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-light/30 transition-all duration-300 flex flex-col sm:flex-row items-start group gap-4 cursor-pointer relative overflow-hidden text-left"
+                      className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-light/30 transition-all duration-300 flex flex-row items-stretch group gap-4 cursor-pointer relative overflow-hidden text-left"
                     >
-                      <div className="absolute top-0 right-0 bg-accent/20 text-primary-dark font-extrabold text-[10px] uppercase px-3 py-1 rounded-bl-xl opacity-0 group-hover:opacity-100 transition-opacity">
-                        Click for Details ↗
-                      </div>
-
-                      {/* Event Image or Date Block */}
-                      {hasValidImage ? (
-                        <div className="w-16 h-16 rounded-2xl border border-slate-100 overflow-hidden flex-shrink-0 bg-slate-100">
+                      {/* EVENT POSTER */}
+                      <div className="w-[100px] sm:w-[120px] min-h-[120px] rounded-2xl border border-slate-100 overflow-hidden flex-shrink-0 bg-[#f1f5f9] relative flex items-center justify-center">
+                        {hasValidImage ? (
                           <ImageWithFallback 
                             src={event.picture_link} 
-                            alt="" 
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            alt={event.title} 
+                            className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-300"
                             icon={Calendar}
                           />
-                        </div>
-                      ) : (
-                        <div className="w-16 h-16 bg-primary-light/10 text-primary-light group-hover:bg-primary-light group-hover:text-white rounded-2xl flex flex-col items-center justify-center flex-shrink-0 transition-colors duration-300">
-                          <span className="text-xl font-extrabold leading-none">{isNaN(day) ? '??' : day}</span>
-                          <span className="text-[10px] font-bold uppercase tracking-wider mt-0.5">{month === 'INVALID DATE' ? 'EV' : month}</span>
-                        </div>
-                      )}
+                        ) : (
+                          <div className="w-full h-full bg-primary-light/10 text-primary-light group-hover:bg-primary-light group-hover:text-white flex flex-col items-center justify-center transition-colors duration-300">
+                            <span className="text-2xl font-extrabold leading-none">{isNaN(day) ? '??' : day}</span>
+                            <span className="text-xs font-bold uppercase tracking-wider mt-1">{month === 'INVALID DATE' ? 'EV' : month}</span>
+                          </div>
+                        )}
+                      </div>
 
                       {/* Event Details */}
-                      <div className="flex-grow">
-                        <h4 className="font-bold text-slate-800 text-base leading-snug group-hover:text-primary-light transition-colors">
-                          {event.title}
-                        </h4>
+                      <div className="flex-grow w-full">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <h4 className="font-bold text-slate-800 text-base sm:text-lg leading-snug group-hover:text-primary-light transition-colors">
+                            {event.title}
+                          </h4>
+                          <span className="inline-block text-[11px] font-extrabold text-primary-dark bg-accent/20 px-2.5 py-0.5 rounded-full">
+                            {formatDate(event.date)}
+                          </span>
+                        </div>
                         
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-xs text-slate-500 font-semibold">
-                          {event.time && (
-                            <span className="flex items-center">
-                              <Clock className="w-3.5 h-3.5 mr-1 text-accent" />
-                              {event.time}
-                            </span>
-                          )}
-                          {event.venue && (
-                            <span className="flex items-center">
-                              <MapPin className="w-3.5 h-3.5 mr-1 text-accent" />
-                              {event.venue}
-                            </span>
-                          )}
-                          {event.website_link && (
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2.5 text-xs text-slate-600 font-semibold">
+                          <span className="flex items-center">
+                            <Clock className="w-3.5 h-3.5 mr-1 text-primary-light" />
+                            {event.time || '09:00 AM'}
+                          </span>
+                          <span className="flex items-center">
+                            <MapPin className="w-3.5 h-3.5 mr-1 text-accent" />
+                            {event.venue || 'DEPT'}
+                          </span>
+                        </div>
+
+                        {/* Action Buttons: [Register] and [Details] */}
+                        <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100">
+                          {event.website_link ? (
                             <button 
                               onClick={(e) => handleWebsiteClick(e, event.website_link, event.title)}
-                              className="inline-flex items-center text-xs font-bold text-white bg-primary-light hover:bg-primary-dark px-2.5 py-0.5 rounded-md transition-colors border-0 cursor-pointer p-0 group"
+                              className="inline-flex items-center justify-center text-xs font-extrabold text-primary-dark bg-accent hover:bg-primary-dark hover:text-white px-3.5 py-1.5 rounded-xl transition-all border-0 cursor-pointer shadow-sm"
                             >
-                              <Globe className="w-3.5 h-3.5 mr-1 text-accent" />
-                              Visit Website ↗
+                              Register
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEventPopup(event);
+                              }}
+                              className="inline-flex items-center justify-center text-xs font-extrabold text-primary-dark bg-accent/30 hover:bg-accent px-3.5 py-1.5 rounded-xl transition-all border-0 cursor-pointer"
+                            >
+                              Register
                             </button>
                           )}
+
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEventPopup(event);
+                            }}
+                            className="inline-flex items-center justify-center text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3.5 py-1.5 rounded-xl transition-colors border-0 cursor-pointer"
+                          >
+                            Details
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -313,7 +456,8 @@ const NoticesEvents = () => {
         </div>
       </div>
 
-      {/* NOTICE DETAILS POPUP MODAL */}
+
+      {/* NOTICE DETAILS POPUP MODAL — Adaptive Layout */}
       {noticeModalData && (
         <div 
           className={`fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-md transition-opacity duration-300 ${
@@ -324,7 +468,7 @@ const NoticesEvents = () => {
           }}
         >
           <div 
-            className={`bg-white w-full max-w-xl rounded-t-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col relative transform transition-all duration-300 max-h-[92vh] sm:max-h-[90vh] ${
+            className={`bg-white w-full ${getNoticeModalWidthClass()} rounded-t-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col relative transform transition-all duration-300 max-h-[92vh] sm:max-h-[90vh] ${
               isClosingNoticeModal ? 'animate-scaleDown' : 'animate-scaleUp'
             }`}
           >
@@ -343,78 +487,106 @@ const NoticesEvents = () => {
               </button>
             </div>
 
-            {/* Attached Picture / Document Image Display */}
-            {isValidImageUrl(noticeModalData.picture_link) ? (
-              <div className="relative max-h-44 sm:max-h-72 w-full bg-slate-950 flex items-center justify-center overflow-hidden p-2 sm:p-3 border-b border-slate-800 flex-shrink-0">
-                <ImageWithFallback
-                  src={noticeModalData.picture_link}
-                  alt=""
-                  className="max-h-40 sm:max-h-64 max-w-full object-contain rounded-lg sm:rounded-xl shadow-lg"
-                  icon={Bell}
-                />
-              </div>
-            ) : null}
+            {/* Scrollable Body Container */}
+            <div className="overflow-y-auto overflow-custom">
 
-            {/* Notice Body Information */}
-            <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 text-left overflow-y-auto">
-              <div>
-                <span className="inline-block bg-primary-light/10 text-primary-dark text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider mb-2">
-                  Department Announcement
-                </span>
-                <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-primary-dark leading-snug">
-                  {noticeModalData.title}
-                </h2>
-              </div>
+              {/* Adaptive Attached Picture / Document Display */}
+              {isValidImageUrl(noticeModalData.picture_link) && (
+                <div className={`w-full bg-[#f1f5f9] flex items-center justify-center p-3 sm:p-4 flex-shrink-0 relative ${
+                  noticeImageType === 'loading' ? 'min-h-[120px]' : ''
+                }`}>
+                  {noticeImageType === 'loading' && (
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <div className="w-8 h-8 border-4 border-slate-200 border-t-primary-light rounded-full animate-spin"></div>
+                      <p className="mt-3 text-slate-400 text-xs font-medium">Loading notice image...</p>
+                    </div>
+                  )}
+                  <img
+                    src={sanitizeImageUrl(noticeModalData.picture_link)}
+                    alt={noticeModalData.title || 'Notice Attachment'}
+                    className={`w-full object-contain object-center rounded-xl sm:rounded-2xl shadow-md transition-all duration-300 ${
+                      getNoticeImageMaxHeight()
+                    } ${
+                      noticeImageType === 'loading' ? 'opacity-0 h-0' : 'opacity-100'
+                    }`}
+                    onLoad={handleNoticeImageLoad}
+                    onError={() => setNoticeImageType('none')}
+                  />
+                  {noticeImageType === 'extreme-tall' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(sanitizeImageUrl(noticeModalData.picture_link), '_blank', 'noopener,noreferrer');
+                      }}
+                      className="absolute bottom-4 right-4 bg-slate-900/80 backdrop-blur-sm text-white text-[10px] font-bold px-3 py-1.5 rounded-lg border border-white/10 cursor-pointer hover:bg-slate-800 transition-colors border-0"
+                    >
+                      🖼 View Full Document
+                    </button>
+                  )}
+                </div>
+              )}
 
-              {/* Meta Info Box */}
-              <div className="bg-slate-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-100 space-y-2 sm:space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500 font-bold uppercase tracking-wider">Posted Date:</span>
-                  <span className="font-bold text-slate-800 bg-slate-200/60 px-3 py-1 rounded-lg">
-                    {formatDate(noticeModalData.date)}
+              {/* Notice Body Information */}
+              <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 text-left">
+                <div>
+                  <span className="inline-block bg-primary-light/10 text-primary-dark text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider mb-2">
+                    Department Announcement
                   </span>
+                  <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-primary-dark leading-snug">
+                    {noticeModalData.title}
+                  </h2>
                 </div>
 
-                {noticeModalData.website_link && (
-                  <div className="pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-xs">
-                    <span className="text-slate-500 font-bold uppercase tracking-wider">Attached Website:</span>
-                    <a
-                      href={noticeModalData.website_link.startsWith('http') ? noticeModalData.website_link : `https://${noticeModalData.website_link}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono text-primary-light font-bold hover:underline truncate max-w-[180px] sm:max-w-[240px] text-[11px] sm:text-xs"
-                    >
-                      {noticeModalData.website_link}
-                    </a>
+                {/* Meta Info Box */}
+                <div className="bg-slate-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-100 space-y-2 sm:space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500 font-bold uppercase tracking-wider">Posted Date:</span>
+                    <span className="font-bold text-slate-800 bg-slate-200/60 px-3 py-1 rounded-lg">
+                      {formatDate(noticeModalData.date)}
+                    </span>
                   </div>
-                )}
-              </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-1 sm:pt-2">
-                {noticeModalData.website_link && (
+                  {noticeModalData.website_link && (
+                    <div className="pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-xs">
+                      <span className="text-slate-500 font-bold uppercase tracking-wider">Attached Website:</span>
+                      <a
+                        href={noticeModalData.website_link.startsWith('http') ? noticeModalData.website_link : `https://${noticeModalData.website_link}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-primary-light font-bold hover:underline truncate max-w-[180px] sm:max-w-[240px] text-[11px] sm:text-xs"
+                      >
+                        {noticeModalData.website_link}
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-1 sm:pt-2">
+                  {noticeModalData.website_link && (
+                    <button
+                      onClick={(e) => handleWebsiteClick(e, noticeModalData.website_link, noticeModalData.title)}
+                      className="flex-1 inline-flex items-center justify-center bg-accent text-primary-dark hover:bg-primary-dark hover:text-white font-extrabold py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl text-[11px] sm:text-xs transition-colors shadow-md border-0 cursor-pointer"
+                    >
+                      <Globe className="w-4 h-4 mr-2 text-primary-dark hover:text-accent" />
+                      Open Website View ↗
+                    </button>
+                  )}
                   <button
-                    onClick={(e) => handleWebsiteClick(e, noticeModalData.website_link, noticeModalData.title)}
-                    className="flex-1 inline-flex items-center justify-center bg-accent text-primary-dark hover:bg-primary-dark hover:text-white font-extrabold py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl text-[11px] sm:text-xs transition-colors shadow-md border-0 cursor-pointer"
+                    onClick={closeNoticePopup}
+                    className="flex-1 inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl text-[11px] sm:text-xs transition-colors border-0 cursor-pointer"
                   >
-                    <Globe className="w-4 h-4 mr-2 text-primary-dark hover:text-accent" />
-                    Open Website View ↗
+                    Close Window
                   </button>
-                )}
-                <button
-                  onClick={closeNoticePopup}
-                  className="flex-1 inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl text-[11px] sm:text-xs transition-colors border-0 cursor-pointer"
-                >
-                  Close Window
-                </button>
+                </div>
               </div>
-            </div>
 
+            </div>
           </div>
         </div>
       )}
 
-      {/* EVENT DETAILS POPUP MODAL */}
+      {/* EVENT DETAILS POPUP MODAL — Adaptive Layout */}
       {eventModalData && (
         <div 
           className={`fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-md transition-opacity duration-300 ${
@@ -425,7 +597,7 @@ const NoticesEvents = () => {
           }}
         >
           <div 
-            className={`bg-white w-full max-w-xl rounded-t-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col relative transform transition-all duration-300 max-h-[92vh] sm:max-h-[90vh] ${
+            className={`bg-white w-full ${getEventModalWidthClass()} rounded-t-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col relative transform transition-all duration-300 max-h-[92vh] sm:max-h-[90vh] ${
               isClosingEventModal ? 'animate-scaleDown' : 'animate-scaleUp'
             }`}
           >
@@ -436,88 +608,147 @@ const NoticesEvents = () => {
                 <Calendar className="w-5 h-5 text-accent" />
                 <h3 className="font-bold text-sm sm:text-base md:text-lg tracking-wide">Event Information</h3>
               </div>
-              <button
-                onClick={closeEventPopup}
-                className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer border-0"
-                aria-label="Close event popup"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Poster / Picture preview */}
-            {eventModalData.picture_link && (
-              <div className="relative h-36 sm:h-56 w-full bg-slate-900 overflow-hidden flex-shrink-0">
-                <img
-                  src={eventModalData.picture_link}
-                  alt={eventModalData.title || "Event Image"}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
-
-            {/* Body Info */}
-            <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 text-left overflow-y-auto">
-              <div>
-                <span className="inline-block bg-accent/20 text-primary-dark text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider mb-2">
-                  Civil Engineering Event
-                </span>
-                <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-primary-dark leading-tight">
-                  {eventModalData.title}
-                </h2>
-              </div>
-
-              {/* Event Attributes Grid */}
-              <div className="grid sm:grid-cols-2 gap-2 sm:gap-3 bg-slate-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-100">
-                <div className="space-y-1">
-                  <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Date</span>
-                  <div className="flex items-center text-sm font-bold text-slate-800">
-                    <Calendar className="w-4 h-4 mr-2 text-accent" />
-                    {formatDate(eventModalData.date)}
-                  </div>
-                </div>
-
-                {eventModalData.time && (
-                  <div className="space-y-1">
-                    <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Time</span>
-                    <div className="flex items-center text-sm font-bold text-slate-800">
-                      <Clock className="w-4 h-4 mr-2 text-accent" />
-                      {eventModalData.time}
-                    </div>
-                  </div>
-                )}
-
-                {eventModalData.venue && (
-                  <div className="space-y-1 sm:col-span-2">
-                    <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Venue / Location</span>
-                    <div className="flex items-center text-sm font-bold text-slate-800">
-                      <MapPin className="w-4 h-4 mr-2 text-accent" />
-                      {eventModalData.venue}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-1 sm:pt-2">
+              <div className="flex items-center space-x-2">
                 {eventModalData.website_link && (
                   <button
                     onClick={(e) => handleWebsiteClick(e, eventModalData.website_link, eventModalData.title)}
-                    className="flex-1 inline-flex items-center justify-center bg-accent text-primary-dark hover:bg-primary-dark hover:text-white font-extrabold py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl text-[11px] sm:text-xs transition-colors shadow-md border-0 cursor-pointer"
+                    className="inline-flex items-center px-3 py-1 bg-accent text-primary-dark hover:bg-white hover:text-primary-dark text-xs font-extrabold rounded-lg transition-colors border-0 cursor-pointer shadow-sm"
                   >
-                    <Globe className="w-4 h-4 mr-2" />
-                    Open Website Details
+                    <Globe className="w-3.5 h-3.5 mr-1" />
+                    Visit Website ↗
                   </button>
                 )}
                 <button
                   onClick={closeEventPopup}
-                  className="flex-1 inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl text-[11px] sm:text-xs transition-colors border-0 cursor-pointer"
+                  className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer border-0"
+                  aria-label="Close event popup"
                 >
-                  Close Window
+                  <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
+            {/* Scrollable Body */}
+            <div className="overflow-y-auto overflow-custom">
+
+              {/* Adaptive Poster / Picture Preview */}
+              {isValidImageUrl(eventModalData.picture_link) && (
+                <div className={`w-full bg-[#f1f5f9] flex items-center justify-center p-3 sm:p-4 flex-shrink-0 ${
+                  eventImageType === 'loading' ? 'min-h-[120px]' : ''
+                }`}>
+                  {eventImageType === 'loading' && (
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <div className="w-8 h-8 border-4 border-slate-200 border-t-primary-light rounded-full animate-spin"></div>
+                      <p className="mt-3 text-slate-400 text-xs font-medium">Loading poster...</p>
+                    </div>
+                  )}
+                  <img
+                    src={sanitizeImageUrl(eventModalData.picture_link)}
+                    alt={eventModalData.title || 'Event Poster'}
+                    className={`w-full object-contain object-center rounded-xl sm:rounded-2xl shadow-md transition-all duration-300 ${
+                      getEventImageMaxHeight()
+                    } ${
+                      eventImageType === 'loading' ? 'opacity-0 h-0' : 'opacity-100'
+                    }`}
+                    onLoad={handleEventImageLoad}
+                    onError={() => setEventImageType('none')}
+                  />
+                  {eventImageType === 'extreme-tall' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(sanitizeImageUrl(eventModalData.picture_link), '_blank', 'noopener,noreferrer');
+                      }}
+                      className="absolute bottom-4 right-4 bg-slate-900/80 backdrop-blur-sm text-white text-[10px] font-bold px-3 py-1.5 rounded-lg border border-white/10 cursor-pointer hover:bg-slate-800 transition-colors border-0"
+                    >
+                      🖼 View Full Poster
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Event Details Body */}
+              <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 text-left">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <span className="inline-block bg-accent/20 text-primary-dark text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider mb-2">
+                      Civil Engineering Event
+                    </span>
+                    <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-primary-dark leading-tight">
+                      {eventModalData.title}
+                    </h2>
+                  </div>
+                  {eventModalData.website_link && (
+                    <button
+                      onClick={(e) => handleWebsiteClick(e, eventModalData.website_link, eventModalData.title)}
+                      className="inline-flex items-center text-xs font-extrabold text-primary-dark bg-accent hover:bg-primary-dark hover:text-white px-3.5 py-2 rounded-xl transition-all border-0 cursor-pointer shadow-sm mt-1"
+                    >
+                      <Globe className="w-4 h-4 mr-1.5" />
+                      Visit Website ↗
+                    </button>
+                  )}
+                </div>
+
+                {/* Event Attributes — Inline for compact layouts */}
+                <div className={`bg-slate-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-100 ${
+                  eventImageType === 'landscape' ? 'flex flex-wrap items-center gap-x-6 gap-y-2' : 'grid sm:grid-cols-2 gap-2 sm:gap-3'
+                }`}>
+                  <div className={eventImageType === 'landscape' ? 'flex items-center gap-2' : 'space-y-1'}>
+                    {eventImageType !== 'landscape' && (
+                      <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Date</span>
+                    )}
+                    <div className="flex items-center text-sm font-bold text-slate-800">
+                      <Calendar className="w-4 h-4 mr-2 text-accent" />
+                      {formatDate(eventModalData.date)}
+                    </div>
+                  </div>
+
+                  {eventModalData.time && (
+                    <div className={eventImageType === 'landscape' ? 'flex items-center gap-2' : 'space-y-1'}>
+                      {eventImageType !== 'landscape' && (
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Time</span>
+                      )}
+                      <div className="flex items-center text-sm font-bold text-slate-800">
+                        <Clock className="w-4 h-4 mr-2 text-accent" />
+                        {eventModalData.time}
+                      </div>
+                    </div>
+                  )}
+
+                  {eventModalData.venue && (
+                    <div className={eventImageType === 'landscape' ? 'flex items-center gap-2' : 'space-y-1 sm:col-span-2'}>
+                      {eventImageType !== 'landscape' && (
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Venue / Location</span>
+                      )}
+                      <div className="flex items-center text-sm font-bold text-slate-800">
+                        <MapPin className="w-4 h-4 mr-2 text-accent" />
+                        {eventModalData.venue}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-1 sm:pt-2">
+                  {eventModalData.website_link && (
+                    <button
+                      onClick={(e) => handleWebsiteClick(e, eventModalData.website_link, eventModalData.title)}
+                      className="flex-1 inline-flex items-center justify-center bg-accent text-primary-dark hover:bg-primary-dark hover:text-white font-extrabold py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl text-[11px] sm:text-xs transition-colors shadow-md border-0 cursor-pointer"
+                    >
+                      <Globe className="w-4 h-4 mr-2" />
+                      Visit Website ↗
+                    </button>
+                  )}
+                  <button
+                    onClick={closeEventPopup}
+                    className="flex-1 inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl text-[11px] sm:text-xs transition-colors border-0 cursor-pointer"
+                  >
+                    Close Window
+                  </button>
+                </div>
+              </div>
+
+            </div>
           </div>
         </div>
       )}

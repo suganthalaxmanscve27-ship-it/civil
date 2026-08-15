@@ -1,12 +1,25 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, BookOpen, Download, FileText, Bookmark } from 'lucide-react';
 import Header from './Header';
 import Footer from './Footer';
 
 const ResourcesSection = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('library');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabFromUrl || 'library');
+
+  useEffect(() => {
+    if (tabFromUrl && ['library', 'downloads', 'curriculum'].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setSearchParams({ tab: tabId });
+  };
 
   const syllabusDownloads = [
     { title: "B.E. Civil Engineering Curriculum - Regulation 2021", size: "1.2 MB", type: "PDF" },
@@ -57,7 +70,7 @@ const ResourcesSection = () => {
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => handleTabChange(tab.id)}
                     className={`flex items-center space-x-2 pb-2 border-b-2 px-1 text-sm font-semibold transition-colors bg-transparent cursor-pointer whitespace-nowrap
                       ${isActive 
                         ? 'border-accent text-primary-light font-bold' 

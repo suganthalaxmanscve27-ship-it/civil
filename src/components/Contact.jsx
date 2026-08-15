@@ -1,20 +1,14 @@
-import React, { useState } from 'react';
-import { MapPin, Phone, Mail, Send, Landmark } from 'lucide-react';
+import { MapPin, Phone, Mail, Landmark } from 'lucide-react';
+
+const InstagramIcon = ({ className = "w-6 h-6" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+  </svg>
+);
 
 const Contact = () => {
-  const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
-  const [isSent, setIsSent] = useState(false);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Simulate message sending
-    setIsSent(true);
-    setTimeout(() => {
-      setIsSent(false);
-      setFormData({ name: '', email: '', subject: '', message: '' });
-    }, 3000);
-  };
-
   return (
     <section id="contact" className="py-12 sm:py-20 bg-slate-50 border-t border-slate-100">
       <div className="container mx-auto px-4 max-w-7xl">
@@ -30,140 +24,104 @@ const Contact = () => {
           <div className="w-20 h-1 bg-accent mx-auto"></div>
         </div>
 
-        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-stretch">
-          {/* Left Column: Contact Cards */}
-          <div className="lg:col-span-5 flex flex-col justify-between space-y-6">
-            
-            {/* Visit Us */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-start">
-              <div className="w-12 h-12 bg-primary-light/10 text-primary-light rounded-2xl flex items-center justify-center mr-4 flex-shrink-0">
-                <MapPin className="w-6 h-6 stroke-[1.5]" />
-              </div>
-              <div>
-                <h4 className="font-extrabold text-primary-dark text-base mb-1.5">Visit Us</h4>
-                <p className="text-slate-600 text-sm leading-relaxed m-0">
-                  Government College of Engineering,<br />
-                  Erode - 638052, Tamil Nadu, India.
-                </p>
-              </div>
+        {/* Contact Info Cards Grid — Fully Clickable Cards */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-8 sm:mb-12">
+          
+          {/* Visit Us Card */}
+          <a
+            href="https://maps.google.com/?q=Government+College+of+Engineering+Erode+Tamil+Nadu"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-light/40 hover:-translate-y-1 transition-all duration-300 text-left flex items-start space-x-4 group no-underline cursor-pointer block"
+          >
+            <div className="w-12 h-12 bg-primary-light/10 text-primary-light group-hover:bg-primary-light group-hover:text-white rounded-2xl flex items-center justify-center flex-shrink-0 transition-colors duration-300">
+              <MapPin className="w-6 h-6 stroke-[1.5]" />
             </div>
-
-            {/* Call Us */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-start">
-              <div className="w-12 h-12 bg-accent/15 text-primary-dark rounded-2xl flex items-center justify-center mr-4 flex-shrink-0">
-                <Phone className="w-6 h-6 stroke-[1.5]" />
-              </div>
-              <div>
-                <h4 className="font-extrabold text-primary-dark text-base mb-1.5">Call Us</h4>
-                <a 
-                  href="tel:+914242530085"
-                  className="text-slate-600 hover:text-primary-light text-sm font-semibold transition-colors m-0 block"
-                >
-                  +91 424 2530085
-                </a>
-              </div>
+            <div>
+              <h4 className="font-extrabold text-primary-dark group-hover:text-primary-light transition-colors text-base mb-1">
+                Visit Us ↗
+              </h4>
+              <p className="text-slate-600 text-xs sm:text-sm leading-relaxed m-0 font-medium">
+                Government College of Engineering,<br />
+                Erode - 638052, Tamil Nadu, India.
+              </p>
             </div>
+          </a>
 
-            {/* Email Us */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-start">
-              <div className="w-12 h-12 bg-primary-light/10 text-primary-light rounded-2xl flex items-center justify-center mr-4 flex-shrink-0">
-                <Mail className="w-6 h-6 stroke-[1.5]" />
-              </div>
-              <div>
-                <h4 className="font-extrabold text-primary-dark text-base mb-1.5">Email Us</h4>
-                <a 
-                  href="mailto:civil@gcee.ac.in"
-                  className="text-slate-600 hover:text-primary-light text-sm font-semibold transition-colors m-0 block"
-                >
-                  civil@gcee.ac.in
-                </a>
-              </div>
+          {/* Call Us Card */}
+          <a
+            href="tel:+914242530085"
+            className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-light/40 hover:-translate-y-1 transition-all duration-300 text-left flex items-start space-x-4 group no-underline cursor-pointer block"
+          >
+            <div className="w-12 h-12 bg-accent/15 text-primary-dark group-hover:bg-accent group-hover:text-primary-dark rounded-2xl flex items-center justify-center flex-shrink-0 transition-colors duration-300">
+              <Phone className="w-6 h-6 stroke-[1.5]" />
             </div>
-
-            {/* GCE Erode Blurb */}
-            <div className="bg-primary-dark text-white p-6 rounded-3xl shadow-md border border-white/5 flex items-start flex-grow">
-              <div className="w-12 h-12 bg-white/10 text-accent rounded-2xl flex items-center justify-center mr-4 flex-shrink-0">
-                <Landmark className="w-6 h-6 stroke-[1.5]" />
-              </div>
-              <div>
-                <h4 className="font-extrabold text-accent text-base mb-1.5">GCE Erode</h4>
-                <p className="text-white/80 text-xs md:text-sm leading-relaxed m-0 font-light">
-                  Government College of Engineering, Erode imparts training to civil engineering students using the latest curriculum and modern pedagogical tools. It was established in 1984 as IRTT and is now a premier government institution.
-                </p>
-              </div>
+            <div>
+              <h4 className="font-extrabold text-primary-dark group-hover:text-primary-light transition-colors text-base mb-1">
+                Call Us 📞
+              </h4>
+              <p className="text-slate-500 text-[10px] mb-1 font-bold uppercase tracking-wider">Department Office</p>
+              <span className="text-slate-800 group-hover:text-primary-light text-sm font-extrabold transition-colors m-0 block">
+                +91 424 2530085
+              </span>
             </div>
+          </a>
 
-          </div>
+          {/* Email Us Card */}
+          <a
+            href="mailto:civil@gcee.ac.in"
+            className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-light/40 hover:-translate-y-1 transition-all duration-300 text-left flex items-start space-x-4 group no-underline cursor-pointer block"
+          >
+            <div className="w-12 h-12 bg-primary-light/10 text-primary-light group-hover:bg-primary-light group-hover:text-white rounded-2xl flex items-center justify-center flex-shrink-0 transition-colors duration-300">
+              <Mail className="w-6 h-6 stroke-[1.5]" />
+            </div>
+            <div>
+              <h4 className="font-extrabold text-primary-dark group-hover:text-primary-light transition-colors text-base mb-1">
+                Email Us ✉️
+              </h4>
+              <p className="text-slate-500 text-[10px] mb-1 font-bold uppercase tracking-wider">Official Inquiries</p>
+              <span className="text-slate-800 group-hover:text-primary-light text-xs sm:text-sm font-extrabold transition-colors m-0 block truncate max-w-[170px]">
+                civil@gcee.ac.in
+              </span>
+            </div>
+          </a>
 
-          {/* Right Column: Contact Feedback Form */}
-          <div className="lg:col-span-7">
-            <div className="bg-white p-6 sm:p-8 md:p-10 rounded-2xl sm:rounded-3xl shadow-lg border border-slate-100 h-full flex flex-col justify-center">
-              <h3 className="text-xl font-bold text-primary-dark mb-6 text-left">Send Us a Message</h3>
-              
-              <form onSubmit={handleSubmit} className="space-y-5 text-left">
-                <div className="grid sm:grid-cols-2 gap-5">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Your Name</label>
-                    <input 
-                      type="text" 
-                      required 
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="John Doe"
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary-light transition-colors text-slate-800"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Email Address</label>
-                    <input 
-                      type="email" 
-                      required
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="john@example.com"
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary-light transition-colors text-slate-800"
-                    />
-                  </div>
-                </div>
+          {/* Instagram Follow Us Card */}
+          <a
+            href="https://www.instagram.com/civil.association"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-light/40 hover:-translate-y-1 transition-all duration-300 text-left flex items-start space-x-4 group no-underline cursor-pointer block"
+          >
+            <div className="w-12 h-12 bg-accent/15 text-primary-dark group-hover:bg-accent group-hover:text-primary-dark rounded-2xl flex items-center justify-center flex-shrink-0 transition-colors duration-300">
+              <InstagramIcon className="w-6 h-6 stroke-[1.5]" />
+            </div>
+            <div>
+              <h4 className="font-extrabold text-primary-dark group-hover:text-primary-light transition-colors text-base mb-1">
+                Instagram ↗
+              </h4>
+              <p className="text-slate-500 text-[10px] mb-1 font-bold uppercase tracking-wider">Civil Association</p>
+              <span className="text-slate-800 group-hover:text-primary-light text-xs sm:text-sm font-extrabold transition-colors m-0 block truncate max-w-[170px]">
+                @civil.association
+              </span>
+            </div>
+          </a>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Subject</label>
-                  <input 
-                    type="text" 
-                    required
-                    value={formData.subject}
-                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                    placeholder="Admissions inquiry / Feedback"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary-light transition-colors text-slate-800"
-                  />
-                </div>
+        </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Message</label>
-                  <textarea 
-                    rows="4" 
-                    required
-                    value={formData.message}
-                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    placeholder="Describe your inquiry..."
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary-light transition-colors text-slate-800 resize-none"
-                  ></textarea>
-                </div>
-
-                {isSent ? (
-                  <div className="py-3 px-4 bg-green-50 text-green-700 rounded-xl text-sm font-semibold border border-green-200 text-center animate-fadeIn">
-                    Message sent successfully! We will get back to you shortly.
-                  </div>
-                ) : (
-                  <button 
-                    type="submit"
-                    className="inline-flex items-center justify-center bg-primary-light hover:bg-primary-dark text-white px-8 py-3.5 font-bold rounded-xl shadow transition-all duration-200 border-0 cursor-pointer text-sm w-full sm:w-auto"
-                  >
-                    Send Message
-                    <Send className="ml-2 w-4 h-4" />
-                  </button>
-                )}
-              </form>
+        {/* GCE Erode Institution Blurb */}
+        <div className="bg-primary-dark text-white p-8 sm:p-10 rounded-3xl shadow-xl border border-white/5 text-left flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-start space-x-5">
+            <div className="w-14 h-14 bg-white/10 text-accent rounded-2xl flex items-center justify-center flex-shrink-0">
+              <Landmark className="w-7 h-7 stroke-[1.5]" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-extrabold text-accent text-xl sm:text-2xl">
+                Government College of Engineering, Erode
+              </h3>
+              <p className="text-white/80 text-sm sm:text-base leading-relaxed m-0 font-light max-w-4xl">
+                The Department of Civil Engineering imparts quality technical training using state-of-the-art laboratory facilities and modern curriculum. Established in 1984 as IRTT and converted into a premier government institution, GCE Erode fosters academic excellence, innovation, and professional leadership.
+              </p>
             </div>
           </div>
         </div>

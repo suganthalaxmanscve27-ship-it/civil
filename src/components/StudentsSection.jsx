@@ -1,12 +1,25 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, GraduationCap, Code, Trophy, BookOpen, ExternalLink } from 'lucide-react';
 import Header from './Header';
 import Footer from './Footer';
 
 const StudentsSection = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('placements');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabFromUrl || 'placements');
+
+  useEffect(() => {
+    if (tabFromUrl && ['placements', 'projects', 'research', 'symposium'].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setSearchParams({ tab: tabId });
+  };
 
   const placementStats = [
     { title: "Placement Rate", value: "85%", desc: "Batch of 2024-25 placed in core & IT firms" },
@@ -23,11 +36,11 @@ const StudentsSection = () => {
   ];
 
   const symposiumDetails = {
-    name: "CIVESTA '26",
+    name: "ADAGE '26",
     tagline: "National Level Technical Symposium",
     events: ["Paper Presentation (Constructo)", "Code Cracking (Strucrex)", "Brick Bonding (Cemesta)", "Model Making (Design-o-Mania)", "CADD Modelling (Draftify)"],
-    date: "September 12, 2026",
-    registrationLink: "#"
+    date: "September 03, 2026",
+    registrationLink: "https://adage26.vercel.app/"
   };
 
   return (
@@ -61,14 +74,14 @@ const StudentsSection = () => {
                 { id: 'placements', label: 'Placements', icon: GraduationCap },
                 { id: 'projects', label: 'Student Projects', icon: Code },
                 { id: 'research', label: 'Research Works', icon: BookOpen },
-                { id: 'symposium', label: 'CIVESTA Symposium', icon: Trophy }
+                { id: 'symposium', label: 'ADAGE Symposium', icon: Trophy }
               ].map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => handleTabChange(tab.id)}
                     className={`flex items-center space-x-2 pb-2 border-b-2 px-1 text-sm font-semibold transition-colors bg-transparent cursor-pointer whitespace-nowrap
                       ${isActive 
                         ? 'border-accent text-primary-light font-bold' 
@@ -174,7 +187,7 @@ const StudentsSection = () => {
                 <h2 className="text-3xl font-extrabold text-primary-dark m-0 font-serif">{symposiumDetails.name}</h2>
                 <h5 className="text-slate-500 font-bold text-sm tracking-wide m-0">{symposiumDetails.tagline}</h5>
                 <p className="text-slate-600 text-sm leading-relaxed">
-                  CIVESTA is the department's annual flagship national-level technical symposium. It serves as an arena for civil engineering students from nationwide colleges to showcase technical competence, build structures, and network with industrial sponsors.
+                  ADAGE is the department's annual flagship national-level technical symposium. It serves as an arena for civil engineering students from nationwide colleges to showcase technical competence, build structures, and network with industrial sponsors.
                 </p>
                 <div className="pt-2 text-xs md:text-sm">
                   <p className="m-0"><strong>Event Date:</strong> {symposiumDetails.date}</p>
@@ -188,10 +201,15 @@ const StudentsSection = () => {
                     <li key={i}>{ev}</li>
                   ))}
                 </ul>
-                <button className="w-full inline-flex items-center justify-center bg-primary-light hover:bg-primary-dark text-white font-bold py-2.5 rounded-xl text-xs transition-colors border-0 cursor-pointer">
+                <a
+                  href={symposiumDetails.registrationLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-flex items-center justify-center bg-primary-light hover:bg-primary-dark text-white font-bold py-2.5 rounded-xl text-xs transition-colors border-0 cursor-pointer no-underline shadow-sm"
+                >
                   Registration Form
                   <ExternalLink className="w-3.5 h-3.5 ml-1.5" />
-                </button>
+                </a>
               </div>
             </div>
           )}

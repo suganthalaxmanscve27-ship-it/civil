@@ -7,106 +7,54 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-const defaultNotices = [
-  {
-    id: 'notice-1',
-    title: 'End Semester Practical & Theory Examination Schedule (Nov/Dec 2026)',
-    date: '2026-08-10',
-    website_link: 'https://gcee.ac.in',
-    picture_link: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 'notice-2',
-    title: 'National Conference on Sustainable Civil Infrastructure (NCSCI-2026)',
-    date: '2026-08-08',
-    website_link: 'https://gcee.ac.in',
-    picture_link: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 'notice-3',
-    title: 'Call for Civil Engineering Student Research & Internship Submissions',
-    date: '2026-08-05',
-    website_link: 'https://gcee.ac.in',
-    picture_link: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=800&q=80'
-  }
-];
+const sanitizeImageUrl = (url) => {
+  if (!url || typeof url !== 'string') return '';
+  let trimmed = url.trim();
+  if (!trimmed) return '';
 
-const defaultEvents = [
-  {
-    id: 'event-1',
-    title: 'Advanced Structural Health Monitoring Workshop',
-    date: '2026-08-25',
-    time: '10:00 AM - 04:00 PM',
-    venue: 'Main Auditorium & CAD Lab',
-    website_link: 'https://gcee.ac.in',
-    picture_link: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 'event-2',
-    title: 'Guest Lecture: Smart Concrete Technology & Green Buildings',
-    date: '2026-09-02',
-    time: '11:00 AM - 01:00 PM',
-    venue: 'Civil Seminar Hall',
-    website_link: 'https://gcee.ac.in',
-    picture_link: 'https://images.unsplash.com/photo-1517581177682-a085bb7ffb15?auto=format&fit=crop&w=800&q=80'
-  }
-];
+  try {
+    if (trimmed.includes('bing.com/images/search')) {
+      const parsedUrl = new URL(trimmed);
+      const mediaUrl = parsedUrl.searchParams.get('mediaurl');
+      if (mediaUrl) return decodeURIComponent(mediaUrl);
+    }
+    if (trimmed.includes('google.com/imgres') || trimmed.includes('google.com/search')) {
+      const parsedUrl = new URL(trimmed);
+      const imgUrl = parsedUrl.searchParams.get('imgurl');
+      if (imgUrl) return decodeURIComponent(imgUrl);
+    }
+    if (trimmed.includes('drive.google.com') || trimmed.includes('docs.google.com')) {
+      const fileIdMatch = trimmed.match(/\/file\/d\/([^/]+)/);
+      if (fileIdMatch && fileIdMatch[1]) {
+        return `https://lh3.googleusercontent.com/d/${fileIdMatch[1]}`;
+      }
+      const idParamMatch = trimmed.match(/[?&]id=([^&]+)/);
+      if (idParamMatch && idParamMatch[1]) {
+        return `https://lh3.googleusercontent.com/d/${idParamMatch[1]}`;
+      }
+    }
+  } catch (e) {}
+
+  return trimmed;
+};
 
 export const DataProvider = ({ children }) => {
-  const [notices, setNoticesState] = useState(() => {
-    try {
-      const saved = localStorage.getItem('gcee_notices');
-      const parsed = saved ? JSON.parse(saved) : [];
-      return parsed && parsed.length > 0 ? parsed : defaultNotices;
-    } catch (e) {
-      return defaultNotices;
-    }
-  });
-
-  const [events, setEventsState] = useState(() => {
-    try {
-      const saved = localStorage.getItem('gcee_events');
-      const parsed = saved ? JSON.parse(saved) : [];
-      return parsed && parsed.length > 0 ? parsed : defaultEvents;
-    } catch (e) {
-      return defaultEvents;
-    }
-  });
-
-  const [faculty, setFacultyState] = useState(() => {
-    try {
-      const saved = localStorage.getItem('gcee_faculty');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
+  const [notices, setNoticesState] = useState([]);
+  const [events, setEventsState] = useState([]);
+  const [faculty, setFacultyState] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Sync state helpers with localStorage
+  // State update helpers
   const setNotices = (updater) => {
-    setNoticesState(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      try { localStorage.setItem('gcee_notices', JSON.stringify(next)); } catch (e) {}
-      return next;
-    });
+    setNoticesState(prev => typeof updater === 'function' ? updater(prev) : updater);
   };
 
   const setEvents = (updater) => {
-    setEventsState(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      try { localStorage.setItem('gcee_events', JSON.stringify(next)); } catch (e) {}
-      return next;
-    });
+    setEventsState(prev => typeof updater === 'function' ? updater(prev) : updater);
   };
 
   const setFaculty = (updater) => {
-    setFacultyState(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      try { localStorage.setItem('gcee_faculty', JSON.stringify(next)); } catch (e) {}
-      return next;
-    });
+    setFacultyState(prev => typeof updater === 'function' ? updater(prev) : updater);
   };
 
   useEffect(() => {
@@ -114,7 +62,7 @@ export const DataProvider = ({ children }) => {
       try {
         setLoading(true);
         
-        // Fetch notices, events, and faculty directly from Supabase
+        // Fetch notices, events, and faculty directly and strictly from Supabase DB
         const [noticesRes, eventsRes, facultyRes] = await Promise.all([
           supabase.from('notices').select('*').order('created_at', { ascending: false }),
           supabase.from('events').select('*').order('created_at', { ascending: false }),
@@ -125,35 +73,26 @@ export const DataProvider = ({ children }) => {
         if (eventsRes.error) console.error('Error fetching events:', eventsRes.error.message);
         if (facultyRes.error) console.error('Error fetching faculty:', facultyRes.error.message);
 
-        if (noticesRes.data && noticesRes.data.length > 0) {
-          setNotices(prev => noticesRes.data.map(item => {
-            const match = prev.find(p => String(p.id) === String(item.id));
-            return {
-              ...item,
-              picture_link: item.picture_link || match?.picture_link || '',
-              website_link: item.website_link || match?.website_link || ''
-            };
-          }));
+        if (noticesRes.data) {
+          setNotices(noticesRes.data.map(item => ({
+            ...item,
+            picture_link: sanitizeImageUrl(item.picture_link),
+            website_link: item.website_link || ''
+          })));
         }
-        if (eventsRes.data && eventsRes.data.length > 0) {
-          setEvents(prev => eventsRes.data.map(item => {
-            const match = prev.find(p => String(p.id) === String(item.id));
-            return {
-              ...item,
-              picture_link: item.picture_link || match?.picture_link || '',
-              website_link: item.website_link || match?.website_link || ''
-            };
-          }));
+        if (eventsRes.data) {
+          setEvents(eventsRes.data.map(item => ({
+            ...item,
+            picture_link: sanitizeImageUrl(item.picture_link),
+            website_link: item.website_link || ''
+          })));
         }
-        if (facultyRes.data && facultyRes.data.length > 0) {
-          setFaculty(prev => facultyRes.data.map(item => {
-            const match = prev.find(p => String(p.id) === String(item.id));
-            return {
-              ...item,
-              picture_link: item.picture_link || match?.picture_link || '',
-              website_link: item.website_link || match?.website_link || ''
-            };
-          }));
+        if (facultyRes.data) {
+          setFaculty(facultyRes.data.map(item => ({
+            ...item,
+            picture_link: sanitizeImageUrl(item.picture_link),
+            website_link: item.website_link || ''
+          })));
         }
       } catch (error) {
         console.error('Error fetching data from Supabase:', error);
@@ -225,26 +164,25 @@ export const DataProvider = ({ children }) => {
       picture_link: noticePayload.picture_link || ''
     };
 
-    setNotices(prev => prev.map(n => String(n.id) === String(id) ? { ...n, ...payload } : n));
+    setNotices(prev => prev.map(n => String(n.id) === String(id) ? { ...n, ...payload, picture_link: sanitizeImageUrl(payload.picture_link) } : n));
 
     if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('your-project-id')) return;
 
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('notices')
         .update(payload)
         .eq('id', id)
         .select();
 
-      if (error) {
-        console.warn('Notice update with optional fields failed, retrying basic fields:', error.message);
-        const basicPayload = { title: payload.title };
-        const basicRes = await supabase.from('notices').update(basicPayload).eq('id', id).select();
-        if (basicRes.data && basicRes.data[0]) {
-          setNotices(prev => prev.map(item => String(item.id) === String(id) ? { ...item, ...basicRes.data[0], date: payload.date, website_link: payload.website_link, picture_link: payload.picture_link } : item));
-        }
-      } else if (data && data[0]) {
-        setNotices(prev => prev.map(item => String(item.id) === String(id) ? { ...data[0], picture_link: payload.picture_link || data[0].picture_link, website_link: payload.website_link || data[0].website_link } : item));
+      if (error || !data || data.length === 0) {
+        await supabase.from('notices').delete().eq('id', id);
+        const insRes = await supabase.from('notices').insert([{ id, ...payload }]).select();
+        data = insRes.data;
+      }
+
+      if (data && data[0]) {
+        setNotices(prev => prev.map(item => String(item.id) === String(id) ? { ...data[0], picture_link: sanitizeImageUrl(data[0].picture_link || payload.picture_link) } : item));
       }
     } catch (error) {
       console.error('Error updating notice:', error);
@@ -262,7 +200,7 @@ export const DataProvider = ({ children }) => {
       picture_link: eventData.picture_link || ''
     };
 
-    const newItem = { id: Date.now().toString(), ...payload };
+    const newItem = { id: Date.now().toString(), ...payload, picture_link: sanitizeImageUrl(eventData.picture_link) };
     setEvents(prev => [newItem, ...prev.filter(e => String(e.id) !== String(newItem.id))]);
 
     if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('your-project-id')) return;
@@ -283,10 +221,10 @@ export const DataProvider = ({ children }) => {
         };
         const basicRes = await supabase.from('events').insert([basicPayload]).select();
         if (basicRes.data && basicRes.data[0]) {
-          setEvents(prev => prev.map(item => String(item.id) === String(newItem.id) ? { ...basicRes.data[0], website_link: payload.website_link, picture_link: payload.picture_link } : item));
+          setEvents(prev => prev.map(item => String(item.id) === String(newItem.id) ? { ...basicRes.data[0], website_link: payload.website_link, picture_link: sanitizeImageUrl(payload.picture_link) } : item));
         }
       } else if (data && data[0]) {
-        setEvents(prev => prev.map(item => String(item.id) === String(newItem.id) ? { ...data[0], picture_link: payload.picture_link || data[0].picture_link, website_link: payload.website_link || data[0].website_link } : item));
+        setEvents(prev => prev.map(item => String(item.id) === String(newItem.id) ? { ...data[0], picture_link: sanitizeImageUrl(data[0].picture_link || payload.picture_link), website_link: payload.website_link || data[0].website_link } : item));
       }
     } catch (error) {
       console.error('Error inserting event:', error);
@@ -314,31 +252,25 @@ export const DataProvider = ({ children }) => {
       picture_link: eventData.picture_link || ''
     };
 
-    setEvents(prev => prev.map(e => String(e.id) === String(id) ? { ...e, ...payload } : e));
+    setEvents(prev => prev.map(e => String(e.id) === String(id) ? { ...e, ...payload, picture_link: sanitizeImageUrl(payload.picture_link) } : e));
 
     if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('your-project-id')) return;
 
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('events')
         .update(payload)
         .eq('id', id)
         .select();
 
-      if (error) {
-        console.warn('Event update with optional fields failed, retrying basic fields:', error.message);
-        const basicPayload = {
-          title: payload.title,
-          date: payload.date,
-          venue: payload.venue,
-          time: payload.time
-        };
-        const basicRes = await supabase.from('events').update(basicPayload).eq('id', id).select();
-        if (basicRes.data && basicRes.data[0]) {
-          setEvents(prev => prev.map(item => String(item.id) === String(id) ? { ...item, ...basicRes.data[0], website_link: payload.website_link, picture_link: payload.picture_link } : item));
-        }
-      } else if (data && data[0]) {
-        setEvents(prev => prev.map(item => String(item.id) === String(id) ? { ...data[0], picture_link: payload.picture_link || data[0].picture_link, website_link: payload.website_link || data[0].website_link } : item));
+      if (error || !data || data.length === 0) {
+        await supabase.from('events').delete().eq('id', id);
+        const insRes = await supabase.from('events').insert([{ id, ...payload }]).select();
+        data = insRes.data;
+      }
+
+      if (data && data[0]) {
+        setEvents(prev => prev.map(item => String(item.id) === String(id) ? { ...data[0], picture_link: sanitizeImageUrl(data[0].picture_link || payload.picture_link) } : item));
       }
     } catch (error) {
       console.error('Error updating event:', error);
@@ -358,7 +290,7 @@ export const DataProvider = ({ children }) => {
       picture_link: facultyData.picture_link || ''
     };
 
-    const newItem = { id: Date.now().toString(), ...payload };
+    const newItem = { id: Date.now().toString(), ...payload, picture_link: sanitizeImageUrl(facultyData.picture_link) };
     setFaculty(prev => [...prev.filter(f => String(f.id) !== String(newItem.id)), newItem]);
 
     if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('your-project-id')) return;
@@ -381,7 +313,7 @@ export const DataProvider = ({ children }) => {
         };
         const basicRes = await supabase.from('faculty').insert([basicPayload]).select();
         if (basicRes.data && basicRes.data[0]) {
-          setFaculty(prev => prev.map(item => item.id === newItem.id ? { ...basicRes.data[0], website_link: payload.website_link, picture_link: payload.picture_link } : item));
+          setFaculty(prev => prev.map(item => item.id === newItem.id ? { ...basicRes.data[0], website_link: payload.website_link, picture_link: sanitizeImageUrl(payload.picture_link) } : item));
         }
       } else if (data && data[0]) {
         setFaculty(prev => prev.map(item => item.id === newItem.id ? data[0] : item));
@@ -414,33 +346,25 @@ export const DataProvider = ({ children }) => {
       picture_link: facultyData.picture_link || ''
     };
 
-    setFaculty(prev => prev.map(f => String(f.id) === String(id) ? { ...f, ...payload } : f));
+    setFaculty(prev => prev.map(f => String(f.id) === String(id) ? { ...f, ...payload, picture_link: sanitizeImageUrl(payload.picture_link) } : f));
 
     if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('your-project-id')) return;
 
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('faculty')
         .update(payload)
         .eq('id', id)
         .select();
 
-      if (error) {
-        console.warn('Faculty update with optional fields failed, retrying basic fields:', error.message);
-        const basicPayload = {
-          name: payload.name,
-          designation: payload.designation,
-          qualification: payload.qualification,
-          specialization: payload.specialization,
-          experience: payload.experience,
-          email: payload.email
-        };
-        const basicRes = await supabase.from('faculty').update(basicPayload).eq('id', id).select();
-        if (basicRes.data && basicRes.data[0]) {
-          setFaculty(prev => prev.map(item => String(item.id) === String(id) ? { ...item, ...basicRes.data[0], website_link: payload.website_link, picture_link: payload.picture_link } : item));
-        }
-      } else if (data && data[0]) {
-        setFaculty(prev => prev.map(item => String(item.id) === String(id) ? data[0] : item));
+      if (error || !data || data.length === 0) {
+        await supabase.from('faculty').delete().eq('id', id);
+        const insRes = await supabase.from('faculty').insert([{ id, ...payload }]).select();
+        data = insRes.data;
+      }
+
+      if (data && data[0]) {
+        setFaculty(prev => prev.map(item => String(item.id) === String(id) ? { ...data[0], picture_link: sanitizeImageUrl(data[0].picture_link || payload.picture_link) } : item));
       }
     } catch (error) {
       console.error('Error updating faculty member:', error);

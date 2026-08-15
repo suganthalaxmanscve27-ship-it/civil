@@ -2,6 +2,14 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ShieldAlert } from 'lucide-react';
 
+const InstagramIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+  </svg>
+);
+
 const Footer = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -33,6 +41,17 @@ const Footer = () => {
             <span className="text-slate-500 text-xs block font-medium">
               Government College of Engineering, Erode, Tamil Nadu, India.
             </span>
+            <div className="pt-2">
+              <a
+                href="https://www.instagram.com/civil.association"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center space-x-2 text-slate-400 hover:text-accent font-bold text-xs transition-colors no-underline"
+              >
+                <InstagramIcon className="w-4 h-4 text-accent" />
+                <span>@civil.association ↗</span>
+              </a>
+            </div>
           </div>
 
           {/* Quick Links Column */}
@@ -60,13 +79,18 @@ const Footer = () => {
               Students
             </h5>
             <ul className="space-y-2 text-xs md:text-sm list-none p-0">
-              {['Placements', 'Student Projects', 'Research', 'Symposiums'].map((item) => (
-                <li key={item}>
+              {[
+                { label: 'Placements', tab: 'placements' },
+                { label: 'Student Projects', tab: 'projects' },
+                { label: 'Research', tab: 'research' },
+                { label: 'Symposiums', tab: 'symposium' }
+              ].map((item) => (
+                <li key={item.label}>
                   <button 
-                    onClick={() => navigate('/students')}
+                    onClick={() => navigate(`/students?tab=${item.tab}`)}
                     className="hover:text-accent text-slate-400 transition-colors bg-transparent border-0 cursor-pointer p-0"
                   >
-                    {item}
+                    {item.label}
                   </button>
                 </li>
               ))}
@@ -79,13 +103,24 @@ const Footer = () => {
               Resources
             </h5>
             <ul className="space-y-2 text-xs md:text-sm list-none p-0">
-              {['Department Library', 'Downloads', 'Notice Board', 'Curriculum'].map((item) => (
-                <li key={item}>
+              {[
+                { label: 'Department Library', tab: 'library' },
+                { label: 'Downloads', tab: 'downloads' },
+                { label: 'Notice Board', target: 'news' },
+                { label: 'Curriculum', tab: 'curriculum' }
+              ].map((item) => (
+                <li key={item.label}>
                   <button 
-                    onClick={() => navigate('/resources')}
+                    onClick={() => {
+                      if (item.target) {
+                        handleQuickLinkClick(item.target);
+                      } else {
+                        navigate(`/resources?tab=${item.tab}`);
+                      }
+                    }}
                     className="hover:text-accent text-slate-400 transition-colors bg-transparent border-0 cursor-pointer p-0"
                   >
-                    {item}
+                    {item.label}
                   </button>
                 </li>
               ))}

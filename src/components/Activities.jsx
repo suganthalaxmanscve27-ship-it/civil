@@ -35,7 +35,7 @@ const Activities = () => {
     },
     {
       title: "Technical Symposium",
-      desc: "CIVESTA - Annual national-level department fest bringing students together for paper presentations and design challenges.",
+      desc: "ADAGE - Annual national-level department fest bringing students together for paper presentations and design challenges.",
       icon: Award
     },
     {

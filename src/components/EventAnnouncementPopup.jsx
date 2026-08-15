@@ -2,6 +2,37 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, Globe, X, Megaphone, ChevronRight, ExternalLink } from 'lucide-react';
 import { useData } from '../context/DataContext';
 
+const sanitizeImageUrl = (url) => {
+  if (!url || typeof url !== 'string') return '';
+  let trimmed = url.trim();
+  if (!trimmed) return '';
+
+  try {
+    if (trimmed.includes('bing.com/images/search')) {
+      const parsedUrl = new URL(trimmed);
+      const mediaUrl = parsedUrl.searchParams.get('mediaurl');
+      if (mediaUrl) return decodeURIComponent(mediaUrl);
+    }
+    if (trimmed.includes('google.com/imgres') || trimmed.includes('google.com/search')) {
+      const parsedUrl = new URL(trimmed);
+      const imgUrl = parsedUrl.searchParams.get('imgurl');
+      if (imgUrl) return decodeURIComponent(imgUrl);
+    }
+    if (trimmed.includes('drive.google.com') || trimmed.includes('docs.google.com')) {
+      const fileIdMatch = trimmed.match(/\/file\/d\/([^/]+)/);
+      if (fileIdMatch && fileIdMatch[1]) {
+        return `https://lh3.googleusercontent.com/d/${fileIdMatch[1]}`;
+      }
+      const idParamMatch = trimmed.match(/[?&]id=([^&]+)/);
+      if (idParamMatch && idParamMatch[1]) {
+        return `https://lh3.googleusercontent.com/d/${idParamMatch[1]}`;
+      }
+    }
+  } catch (e) {}
+
+  return trimmed;
+};
+
 const EventAnnouncementPopup = ({ showIntro = false }) => {
   const { events, loading } = useData();
   const [isOpen, setIsOpen] = useState(false);
@@ -86,14 +117,17 @@ const EventAnnouncementPopup = ({ showIntro = false }) => {
       {!isOpen && (
         <button
           onClick={handleOpen}
-          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 bg-gradient-to-r from-primary-light to-primary-dark hover:from-primary-dark hover:to-primary-light text-white px-3 sm:px-4.5 py-2.5 sm:py-3.5 rounded-full shadow-2xl flex items-center space-x-2 sm:space-x-2.5 border-2 border-accent transition-all duration-300 hover:scale-105 cursor-pointer animate-bounce-subtle group"
+          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 bg-gradient-to-r from-primary-light to-primary-dark hover:from-primary-dark hover:to-primary-light text-white h-11 sm:h-12 px-4 sm:px-5 rounded-full shadow-2xl flex flex-row items-center justify-center space-x-2.5 border-2 border-accent transition-all duration-300 hover:scale-105 cursor-pointer animate-bounce-subtle group leading-none box-border"
           title="Click to view upcoming events popup"
         >
-          <div className="relative">
-            <Megaphone className="w-5 h-5 text-accent group-hover:rotate-12 transition-transform" />
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
+          <div className="relative flex items-center justify-center flex-shrink-0 self-center">
+            <Megaphone className="w-4 h-4 sm:w-5 sm:h-5 text-accent group-hover:rotate-12 transition-transform block" />
+            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
           </div>
-          <span className="font-bold text-xs tracking-wide">Upcoming Events ({events.length})</span>
+          <span className="font-extrabold text-xs tracking-wide leading-none select-none self-center flex items-center">
+            Upcoming Events ({events.length})
+          </span>
         </button>
       )}
 
@@ -139,7 +173,7 @@ const EventAnnouncementPopup = ({ showIntro = false }) => {
               {currentEvent.picture_link ? (
                 <div className="relative h-28 sm:h-48 w-full bg-slate-900 overflow-hidden flex-shrink-0">
                   <img
-                    src={currentEvent.picture_link}
+                    src={sanitizeImageUrl(currentEvent.picture_link)}
                     alt={currentEvent.title || "Event Image"}
                     className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                   />
